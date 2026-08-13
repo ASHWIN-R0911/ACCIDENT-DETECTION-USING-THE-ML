@@ -17,14 +17,14 @@
 #include "accident_model.h"
 
 // ── WiFi Credentials ─────────────────────────────────
-#define WIFI_SSID     "PRIME EREN"
-#define WIFI_PASSWORD "prime eren"
+#define WIFI_SSID     "xxxxxxxxxx"
+#define WIFI_PASSWORD "xxxxxxxxxx"
 
 // ── WhatsApp Numbers and API Keys ────────────────────
 // Replace with real numbers and API keys from TextMeBot
 // Get your apikey from https://textmebot.com
-#define FAMILY_PHONE   "918870711503"  // with country code
-#define FAMILY_APIKEY  "3wc5KtV9ooux"       // from TextMeBot
+#define FAMILY_PHONE   "xxxxxxxxxx"  // with country code
+#define FAMILY_APIKEY  "xxxxxxxxxx"       // from TextMeBot
 
 
 // ── OLED ─────────────────────────────────────────────
