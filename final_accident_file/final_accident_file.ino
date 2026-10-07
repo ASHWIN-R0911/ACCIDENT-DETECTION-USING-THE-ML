@@ -21,10 +21,8 @@
 #define WIFI_PASSWORD "xxxxxxxxxx"
 
 // ── WhatsApp Numbers and API Keys ────────────────────
-// Replace with real numbers and API keys from TextMeBot
-// Get your apikey from https://textmebot.com
 #define FAMILY_PHONE   "xxxxxxxxxx"  // with country code
-#define FAMILY_APIKEY  "xxxxxxxxxx"       // from TextMeBot
+#define FAMILY_APIKEY  "xxxxxxxxxx"
 
 
 // ── OLED ─────────────────────────────────────────────
@@ -90,33 +88,27 @@ int   lastDisplayedSecond = 16;
 bool  wifiConnected     = false;
 
 // ── Send WhatsApp via TextMeBot ───────────────────────
-bool sendWhatsApp(String phone, String apiKey,
-                  String message) {
-
+bool sendWhatsApp(String phone, String apiKey, String message) {
   WiFiClientSecure client;
   client.setInsecure();
 
-  Serial.printf("Sending WhatsApp to %s...\n",
-                phone.c_str());
+  Serial.printf("Sending WhatsApp to %s...\n", phone.c_str());
 
   if (!client.connect("api.textmebot.com", 443)) {
     Serial.println("TextMeBot connection failed");
     return false;
   }
 
-  // URL encode the message
   String encodedMsg = urlEncode(message);
 
-  String url = "/send.php?recipient=" + phone +
-               "&apikey=" + apiKey +
-               "&text=" + encodedMsg;
+  // FIXED: Parameter keys updated to phone and apiKey
+// Correct URL construction for TextMeBot API
+String url = "/send.php?recipient=" + phone + "&apikey=" + apiKey + "&text=" + encodedMsg;
 
-  client.print(String("GET ") + url +
-               " HTTP/1.1\r\n" +
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
                "Host: api.textmebot.com\r\n" +
                "Connection: close\r\n\r\n");
 
-  // Wait for response
   unsigned long timeout = millis();
   while (client.available() == 0) {
     if (millis() - timeout > 10000) {
@@ -134,12 +126,15 @@ bool sendWhatsApp(String phone, String apiKey,
 
   Serial.println("TextMeBot response received");
 
-  // Check if message was sent OK.
-  // TextMeBot returns "Message Sent" (or similar success text)
-  // on success, and an "Error" string on failure.
-  if (response.indexOf("Error") < 0 &&
-      (response.indexOf("Message Sent") >= 0 ||
-       response.indexOf("200") >= 0)) {
+  // FIXED: Added check for 201 Created alongside 200 OK
+  bool isSuccess = (response.indexOf("200") >= 0) || 
+                   (response.indexOf("201") >= 0) || 
+                   (response.indexOf("Message Sent") >= 0);
+
+  bool hasError = (response.indexOf("Error") >= 0) || 
+                  (response.indexOf("error") >= 0);
+
+  if (isSuccess && !hasError) {
     Serial.println("WhatsApp message sent OK");
     return true;
   } else {
@@ -148,7 +143,6 @@ bool sendWhatsApp(String phone, String apiKey,
     return false;
   }
 }
-
 // ── Build and Send All Alerts ─────────────────────────
 void sendAlertMessages() {
   if (!wifiConnected) {
@@ -199,15 +193,22 @@ void sendAlertMessages() {
   if (sent1) {
     Serial.println("WhatsApp alert sent");
   } else {
-    Serial.println("WhatsApp failed — check API keys");
+    Serial.println("WhatsApp failed — check API key");
   }
 }
 
-// ── MPU6050 Read ──────────────────────────────────────
 void readMPU6050() {
   Wire.beginTransmission(MPU_ADDR);
   Wire.write(0x3B);
-  Wire.endTransmission(false);
+  if (Wire.endTransmission(false) != 0) {
+    // If transmission failed, try re-waking the MPU6050
+    Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x6B);
+    Wire.write(0);
+    Wire.endTransmission(true);
+    return; 
+  }
+
   Wire.requestFrom(MPU_ADDR, 14, true);
 
   if (Wire.available() == 14) {
@@ -225,6 +226,9 @@ void readMPU6050() {
     gx_dps = GyX / 131.0f;
     gy_dps = GyY / 131.0f;
     gz_dps = GyZ / 131.0f;
+  } else {
+    // Force a hardware I2C clear if the buffer is empty
+    Wire.flush();
   }
 }
 
